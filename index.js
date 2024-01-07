@@ -144,6 +144,42 @@ app.get("/getAllUsers", async function (req, res) {
   }
 });
 
+app.post("/getUsersByGenderAndAge", async function (req, res) {
+  const { userId, name, gender, age, timestamp } = req.body;
+  const params = {
+    TableName: USERS_TABLE,
+    KeyConditionExpression: 'userId = :userId AND #ts > :minTimestamp',
+    FilterExpression: 'gender = :gender AND age > :minAge AND #name <> :name',
+    //Invalid FilterExpression: Attribute name and timestamp is a reserved keyword; reserved keyword: name timestamp
+    ExpressionAttributeNames: {
+      '#ts': 'timestamp',
+      '#name': 'name',
+    },
+    ExpressionAttributeValues: {
+      ':userId': userId,         
+      ':gender': gender,    
+      ':minAge': age,         
+      ':minTimestamp': timestamp,
+      ':name': name,
+    },
+  };
+
+  try {
+    const { Items } = await dynamoDbClient.send(new QueryCommand(params));
+    if (Items) {
+      res.json(Items);
+    } else {
+      res
+        .status(404)
+        .json({ error: 'Could not find any users by provided "gender"' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error,  message: "Could not retreive users" });
+  }
+});
+
+
 app.use((req, res, next) => {
   return res.status(404).json({
     error: "Api Not Found",
